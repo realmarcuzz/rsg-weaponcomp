@@ -95,9 +95,6 @@ AddEventHandler('rsg-weaponcomp:server:apply_weapon_components', function(compon
             TriggerClientEvent('ox_lib:notify', src, {title = locale('notify_50'), type = 'inform', duration = 5000 })
 
             if Config.Debug then print('Weapon components have been successfully updated for the serial:', serial, json.encode(components)) end
-
-            Wait(100)
-            TriggerClientEvent('rsg-weaponcomp:client:LoadComponents', src)
         end
     end)
 

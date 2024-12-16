@@ -10,6 +10,7 @@ local currentSerial = nil
 local currentName = nil
 local currentWep = nil
 local createdEntries = {}
+local loadedFromDb = false --we want to load weapon components from db only when we opening menu for first time
 
 -- LIST POSSIBLES CATEGORYES
 local readComponent = {Components.LanguageWeapons[1], Components.LanguageWeapons[7], Components.LanguageWeapons[5], Components.LanguageWeapons[10], Components.LanguageWeapons[41], Components.LanguageWeapons[11], Components.LanguageWeapons[36],  Components.LanguageWeapons[2], Components.LanguageWeapons[37], Components.LanguageWeapons[27], Components.LanguageWeapons[31], Components.LanguageWeapons[39], Components.LanguageWeapons[38]}
@@ -360,6 +361,7 @@ end)
 ---------------------------------
 
 RegisterNetEvent('rsg-weaponcomp:client:startcustom', function()-- , custcoords
+    loadedFromDb = false --reset failsafe
     local weaponHash = GetPedCurrentHeldWeapon(cache.ped)
     local weaponInHands = exports['rsg-weapons']:weaponInHands()
     local weaponName = Citizen.InvokeNative(0x89CF5FF3D363311E, weaponHash, Citizen.ResultAsString())
@@ -602,7 +604,7 @@ AddEventHandler("rsg-weaponcomp:client:LoadComponents", function()
 
     while not callbackFinished do Wait(100) end
 
-    if componentsSql ~= nil and wep ~= nil then
+    if componentsSql ~= nil and wep ~= nil and next(componentsSql) ~= nil then
         if Config.Debug then print( 'rsg-weaponcomp:client:LoadComponents"')  print('weaponHash: ', weaponHash, 'component: ', json.encode(componentsSql)) end
         for category, hashname in pairs(componentsSql) do
 
@@ -620,13 +622,15 @@ AddEventHandler("rsg-weaponcomp:client:LoadComponents", function()
             end ]]--
         end
         ComponentsTables(componentsSql)
+    elseif currentWep and wepobject then --only do that when we are modifying stock weapon
+        TriggerEvent('rsg-weaponcomp:client:LoadComponentsDefaults')
     end
     Wait(100)
     componentsSql = nil
 end)
 
-RegisterNetEvent("rsg-weaponcomp:client:LoadComponents")
-AddEventHandler("rsg-weaponcomp:client:LoadComponents", function(component, wepHash)
+RegisterNetEvent("rsg-weaponcomp:client:LoadComponentsDefaults")
+AddEventHandler("rsg-weaponcomp:client:LoadComponentsDefaults", function()
     local ped = PlayerPedId()
     local shared = Config.Shared
     local specific = Config.Specific
@@ -657,71 +661,27 @@ AddEventHandler("rsg-weaponcomp:client:LoadComponents", function(component, wepH
 
     Wait(0)
 
-    for k, v in pairs(shared) do
-        if k ~= weapon_type then goto continue end
+    for _weaponName, _components in pairs(specific) do
+        if num(GetHashKey(_weaponName)) ~= num(wepHash) then goto continue end
 
-        for _, v2 in pairs(v) do
-            for i = 1, 100 do
-                if v2[i] then
-                    RemoveWeaponComponentFromPed(ped, GetHashKey(v2[i]), wepHash)
-                end
+        for _componentType, _componentData in pairs(_components) do
+            local componentFilter = {
+                BARREL = true,
+                GRIP = true,
+                SIGHT = true,
+                CLIP = true,
+                MAG = true,
+                STOCK = true,
+                FRAME_VERTDATA = true,
+                TUBE = true,
+                TORCH_MATCHSTICK = true,
+                GRIPSTOCK = true,
+            }
+
+            if componentFilter[_componentType] then
+                Citizen.InvokeNative(0x74C9090FDD1BB48E, wepobject, GetHashKey(_componentData[1]), wepHash, true)
             end
         end
-
-        ::continue::
-    end
-
-    for k, v in pairs(specific) do
-        if num(GetHashKey(k)) ~= num(wepHash) then goto continue end
-
-        for k2, v2 in pairs(v) do
-            for i = 1, 100 do
-                if v2[i] then
-                    RemoveWeaponComponentFromPed(ped, GetHashKey(v2[i]), wepHash)
-                end
-
-                if k2 == 'BARREL' then
-                    Citizen.InvokeNative(0x74C9090FDD1BB48E, ped, GetHashKey(v2[1]), wepHash, true)
-                end
-
-                if k2 == 'GRIP' then
-                    Citizen.InvokeNative(0x74C9090FDD1BB48E, ped, GetHashKey(v2[1]), wepHash, true)
-                end
-
-                if k2 == 'SIGHT' then
-                    Citizen.InvokeNative(0x74C9090FDD1BB48E, ped, GetHashKey(v2[1]), wepHash, true)
-                end
-
-                if k2 == 'CLIP' then
-                    Citizen.InvokeNative(0x74C9090FDD1BB48E, ped, GetHashKey(v2[1]), wepHash, true)
-                end
-
-                if k2 == 'MAG' then
-                    Citizen.InvokeNative(0x74C9090FDD1BB48E, ped, GetHashKey(v2[1]), wepHash, true)
-                end
-                
-                if k2 == 'STOCK' then
-                    Citizen.InvokeNative(0x74C9090FDD1BB48E, ped, GetHashKey(v2[1]), wepHash, true)
-                end
-
-                if k2 == 'FRAME_VERTDATA' then
-                    Citizen.InvokeNative(0x74C9090FDD1BB48E, ped, GetHashKey(v2[1]), wepHash, true)
-                end
-
-                if k2 == 'TUBE' then
-                    Citizen.InvokeNative(0x74C9090FDD1BB48E, ped, GetHashKey(v2[1]), wepHash, true)
-                end
-
-                if k2 == 'TORCH_MATCHSTICK' then
-                    Citizen.InvokeNative(0x74C9090FDD1BB48E, ped, GetHashKey(v2[1]), wepHash, true)
-                end
-
-                if k2 == 'GRIPSTOCK' then
-                    Citizen.InvokeNative(0x74C9090FDD1BB48E, ped, GetHashKey(v2[1]), wepHash, true)
-                end
-            end
-        end
-
         ::continue::
     end
 
@@ -773,7 +733,7 @@ AddEventHandler("rsg-weaponcomp:client:LoadComponents_selection", function()
     end
     Wait(100)
     componentsPreSql = nil
-	TriggerEvent('rsg-weaponcomp:client:LoadComponents')
+--	TriggerEvent('rsg-weaponcomp:client:LoadComponents')
 end)
 
 -----------------------------------
@@ -847,6 +807,12 @@ mainCompMenu = function(objecthash)
         Wait(1000)
 
     end)
+
+    if not loadedFromDb then 
+        TriggerEvent('rsg-weaponcomp:client:LoadComponents')
+        loadedFromDb = true
+    end
+    
 end
 
 ---------------------
@@ -1319,7 +1285,7 @@ AddEventHandler("rsg-weaponcomp:client:animationSaved", function(objecthash)
       SetEntityAsNoLongerNeeded(Cloth)
       DeleteEntity(Cloth)
     end
-    TriggerServerEvent("rsg-weaponcomp:server:check_comps")
+    TriggerEvent('rsg-weaponcomp:client:LoadComponents')
     TriggerEvent('rsg-weaponcomp:client:ExitCam')
     resetCache()
 end)
@@ -1343,7 +1309,6 @@ AddEventHandler('rsg-weaponcomp:client:ExitCam', function()
     DoScreenFadeOut(1000)
     Wait(0)
     DoScreenFadeIn(1000)
-    SetCurrentPedWeapon(cache.ped, `WEAPON_UNARMED`, true)
     LocalPlayer.state:set("inv_busy", false, true)
 
     FreezeEntityPosition(cache.ped, false)
