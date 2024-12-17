@@ -4,21 +4,22 @@ rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aw
 game 'rdr3'
 
 description 'rsg-weaponcomp'
-version '2.0.0'
+version '2.1.0'
 
 shared_script {
     '@ox_lib/init.lua',
-    'data/weaponslist.lua',
-    'config.lua',
+    'data/weaponslist.lua', --check if we need it in server, otherwise move to client
+    'config/*.lua',
 }
 
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
-    'server/*.lua'
+    'server/*.lua',
 }
 
 client_scripts {
-    'client/*.lua'
+    'client/helpers/*.lua',
+    'client/*.lua',
 }
 
 files {
@@ -34,4 +35,4 @@ dependencies {
 lua54 'yes'
 
 export 'startWeaponInspection'
-export 'InWeaponCustom'
+--export 'InWeaponCustom' -- why need this?
